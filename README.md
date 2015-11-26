@@ -34,11 +34,6 @@ client := api.New("http://127.0.0.1/api")
 // set header
 api.SetHeader("Host", "api.host")
 
-// trace api
-api.Trace(func(req http.Request, b []byte, e error){
-    // you can write log here... if e not nil
-})
-
 // Get
 params, err := url.ParseQuery("a=1&b=2")
 
@@ -47,5 +42,13 @@ accVals, err := api.Get("hello", params)
 
 fmt.Println(vals.Get("key.key2.key3"))
 
+```
+
+### Trace api
+
+```go
+api.Trace(func(req http.Request, b []byte, e error){
+    // you can write log here... if e not nil
+})
 ```
 
