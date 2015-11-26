@@ -2,8 +2,6 @@ package api
 
 import (
 	"bytes"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -13,21 +11,23 @@ import (
 
 type ApiHandler func(string, url.Values) (*Values, error)
 type ApiTracer func(http.Request, []byte, error)
+type ApiDecoder func([]byte) interface{}
 
 type headers map[string]string
 
-type api struct {
+type Api struct {
+	Decoder  ApiDecoder
 	client   *http.Client
 	base_url string
 	headers  headers
 	tracers  []ApiTracer
 }
 
-func New(base string) *api {
+func New(base string) *Api {
 
 	base = strings.TrimRight(base, "/")
 
-	return &api{
+	return &Api{
 		client:   &http.Client{},
 		base_url: base,
 		headers:  make(headers),
@@ -35,21 +35,21 @@ func New(base string) *api {
 }
 
 // 設定共用檔頭
-func (a *api) SetHeader(name, value string) *api {
+func (a *Api) SetHeader(name, value string) *Api {
 	a.headers[name] = value
 
 	return a
 }
 
 // 注入追蹤程序
-func (a *api) Trace(tc ApiTracer) *api {
+func (a *Api) Trace(tc ApiTracer) *Api {
 	a.tracers = append(a.tracers, tc)
 
 	return a
 }
 
 // GET
-func (a *api) Get(uri string, params url.Values) (v *Values, err error) {
+func (a *Api) Get(uri string, params url.Values) (v *Values, err error) {
 
 	uri = resolveUri(uri)
 	req, err := http.NewRequest("GET", a.base_url+"/"+uri+"?"+params.Encode(), nil)
@@ -58,7 +58,7 @@ func (a *api) Get(uri string, params url.Values) (v *Values, err error) {
 }
 
 // POST
-func (a *api) Post(uri string, params url.Values) (v *Values, err error) {
+func (a *Api) Post(uri string, params url.Values) (v *Values, err error) {
 
 	uri = resolveUri(uri)
 	req, err := http.NewRequest("POST", a.base_url+"/"+uri, bytes.NewBufferString(params.Encode()))
@@ -67,7 +67,7 @@ func (a *api) Post(uri string, params url.Values) (v *Values, err error) {
 }
 
 // PUT
-func (a *api) Put(uri string, params url.Values) (v *Values, err error) {
+func (a *Api) Put(uri string, params url.Values) (v *Values, err error) {
 
 	uri = resolveUri(uri)
 	req, err := http.NewRequest("PUT", a.base_url+"/"+uri, bytes.NewBufferString(params.Encode()))
@@ -76,7 +76,7 @@ func (a *api) Put(uri string, params url.Values) (v *Values, err error) {
 }
 
 // DELETE
-func (a *api) Delete(uri string, params url.Values) (v *Values, err error) {
+func (a *Api) Delete(uri string, params url.Values) (v *Values, err error) {
 
 	uri = resolveUri(uri)
 	req, err := http.NewRequest("DELETE", a.base_url+"/"+uri, bytes.NewBufferString(params.Encode()))
@@ -94,7 +94,7 @@ func resolveHeaders(req *http.Request, headers headers) {
 	}
 }
 
-func resolveRequest(a *api, req *http.Request, e error) (v *Values, err error) {
+func resolveRequest(a *Api, req *http.Request, e error) (v *Values, err error) {
 
 	if e != nil {
 		err = fmt.Errorf("new request error( %s )", err)
@@ -119,36 +119,10 @@ func resolveRequest(a *api, req *http.Request, e error) (v *Values, err error) {
 		return
 	}
 
-	// response body to json
-	data := make(map[string]interface{})
-	if e := json.Unmarshal(content, &data); e != nil {
-		err = fmt.Errorf("json.Unmarshal error( %s )", e)
-		return
+	if a.Decoder == nil {
+		v = &Values{string(content)}
+	} else {
+		v = &Values{a.Decoder(content)}
 	}
-
-	// json 資料內必須要有 result 這個 key, 且其值必須為 "ok"
-	// 大小寫不嚴格檢查
-	result, ok := data["result"]
-	if !ok {
-		err = errors.New("response body miss the key [result]")
-		return
-	}
-
-	x, ok := result.(string)
-	if !ok {
-		err = fmt.Errorf("( %v ) is not string", result)
-		return
-	}
-	if "ok" != strings.ToLower(x) {
-		err = fmt.Errorf("result not ok ( %s )", result)
-		return
-	}
-
-	ret, ok := data["ret"]
-	if !ok {
-		err = errors.New("回應資料有誤")
-	}
-
-	v = &Values{ret}
 	return
 }
