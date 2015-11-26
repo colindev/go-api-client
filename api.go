@@ -16,7 +16,7 @@ type ApiDecoder func([]byte) interface{}
 type headers map[string]string
 
 type Api struct {
-	Decoder  ApiDecoder
+	decoder  ApiDecoder
 	client   *http.Client
 	base_url string
 	headers  headers
@@ -44,6 +44,12 @@ func (a *Api) SetHeader(name, value string) *Api {
 // 注入追蹤程序
 func (a *Api) Trace(tc ApiTracer) *Api {
 	a.tracers = append(a.tracers, tc)
+
+	return a
+}
+
+func (a *Api) SetDecoder(f ApiDecoder) *Api {
+	a.decoder = f
 
 	return a
 }
@@ -119,10 +125,10 @@ func resolveRequest(a *Api, req *http.Request, e error) (v *Values, err error) {
 		return
 	}
 
-	if a.Decoder == nil {
+	if a.decoder == nil {
 		v = &Values{string(content)}
 	} else {
-		v = &Values{a.Decoder(content)}
+		v = &Values{a.decoder(content)}
 	}
 	return
 }
