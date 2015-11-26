@@ -11,7 +11,7 @@ import (
 
 type ApiHandler func(string, url.Values) (*Values, error)
 type ApiTracer func(http.Request, []byte, error)
-type ApiDecoder func([]byte) interface{}
+type ApiDecoder func([]byte) (interface{}, error)
 
 type headers map[string]string
 
@@ -128,7 +128,10 @@ func resolveRequest(a *Api, req *http.Request, e error) (v *Values, err error) {
 	if a.decoder == nil {
 		v = &Values{string(content)}
 	} else {
-		v = &Values{a.decoder(content)}
+		ret, err := a.decoder(content)
+		if err == nil {
+			v = &Values{ret}
+		}
 	}
 	return
 }
