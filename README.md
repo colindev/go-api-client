@@ -47,7 +47,7 @@ fmt.Println(vals.Get("key.key2.key3"))
 ### Trace api
 
 ```go
-api.Trace(func(req http.Request, b []byte, e error){
+api.Trace(func(req http.Request, b []byte, status int, e error){
     // you can write log here... if e not nil
 })
 ```
