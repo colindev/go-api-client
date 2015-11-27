@@ -10,7 +10,7 @@ import (
 )
 
 type ApiHandler func(string, url.Values) (*Values, error)
-type ApiTracer func(http.Request, []byte, error)
+type ApiTracer func(http.Request, []byte, int, error)
 type ApiDecoder func([]byte) (interface{}, error)
 
 type headers map[string]string
@@ -100,6 +100,12 @@ func resolveHeaders(req *http.Request, headers headers) {
 	}
 }
 
+func resolveTracers(tcs []ApiTracer, req http.Request, ctn []byte, sc int, err error) {
+	for _, tc := range tcs {
+		tc(req, ctn, sc, err)
+	}
+}
+
 func resolveRequest(a *Api, req *http.Request, e error) (v *Values, err error) {
 
 	if e != nil {
@@ -117,9 +123,9 @@ func resolveRequest(a *Api, req *http.Request, e error) (v *Values, err error) {
 	defer res.Body.Close()
 
 	content, err := ioutil.ReadAll(res.Body)
-	for _, tc := range a.tracers {
-		tc(*req, content, err)
-	}
+	defer func() {
+		resolveTracers(a.tracers, *req, content, res.StatusCode, err)
+	}()
 	if err != nil {
 		err = fmt.Errorf("response body read error( %s )", err)
 		return
