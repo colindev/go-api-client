@@ -100,6 +100,7 @@ func resolveHeaders(req *http.Request, headers headers) {
 	}
 }
 
+// TODO: recover
 func resolveTracers(tcs []ApiTracer, req http.Request, ctn []byte, sc int, err error) {
 	for _, tc := range tcs {
 		tc(req, ctn, sc, err)
@@ -133,11 +134,13 @@ func resolveRequest(a *Api, req *http.Request, e error) (v *Values, err error) {
 
 	if a.decoder == nil {
 		v = &Values{string(content)}
-	} else {
-		ret, err := a.decoder(content)
-		if err == nil {
-			v = &Values{ret}
-		}
+		return
 	}
+	ret, err := a.decoder(content)
+	if err != nil {
+		return
+	}
+	v = &Values{ret}
+
 	return
 }

@@ -8,6 +8,7 @@ type Values struct {
 
 func (v *Values) Get(key string) (ret interface{}) {
 	indexes := strings.Split(key, ".")
+
 	ret = v.body
 
 	if key == "" {
