@@ -101,11 +101,11 @@ func resolveHeaders(req *http.Request, headers headers) {
 }
 
 func resolveTracers(tcs []ApiTracer, req http.Request, ctn []byte, sc int, err error) {
-	//defer func() {
-	//	if r := recover(); r != nil {
-	//		fmt.Println(r)
-	//	}
-	//}()
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println(r)
+		}
+	}()
 	for _, tc := range tcs {
 		tc(req, ctn, sc, err)
 	}
