@@ -100,14 +100,43 @@ func resolveHeaders(req *http.Request, headers headers) {
 	}
 }
 
-// TODO: recover
 func resolveTracers(tcs []ApiTracer, req http.Request, ctn []byte, sc int, err error) {
+	//defer func() {
+	//	if r := recover(); r != nil {
+	//		fmt.Println(r)
+	//	}
+	//}()
 	for _, tc := range tcs {
 		tc(req, ctn, sc, err)
 	}
 }
 
+func resolveDecoder(d ApiDecoder, b []byte) (v *Values, err error) {
+
+	if d == nil {
+		v = &Values{string(b)}
+		return
+	}
+
+	ret, err := d(b)
+	if err != nil {
+		return
+	}
+	v = &Values{ret}
+
+	return
+}
+
 func resolveRequest(a *Api, req *http.Request, e error) (v *Values, err error) {
+	var (
+		tracers []ApiTracer  = a.tracers
+		request http.Request = *req
+		content []byte
+		status  int
+	)
+	defer func() {
+		resolveTracers(tracers, request, content, status, err)
+	}()
 
 	if e != nil {
 		err = fmt.Errorf("new request error( %s )", err)
@@ -123,24 +152,11 @@ func resolveRequest(a *Api, req *http.Request, e error) (v *Values, err error) {
 	}
 	defer res.Body.Close()
 
-	content, err := ioutil.ReadAll(res.Body)
-	defer func() {
-		resolveTracers(a.tracers, *req, content, res.StatusCode, err)
-	}()
+	content, err = ioutil.ReadAll(res.Body)
+
 	if err != nil {
 		err = fmt.Errorf("response body read error( %s )", err)
 		return
 	}
-
-	if a.decoder == nil {
-		v = &Values{string(content)}
-		return
-	}
-	ret, err := a.decoder(content)
-	if err != nil {
-		return
-	}
-	v = &Values{ret}
-
-	return
+	return resolveDecoder(a.decoder, content)
 }
