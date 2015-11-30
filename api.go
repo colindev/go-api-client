@@ -9,14 +9,12 @@ import (
 	"strings"
 )
 
-type ApiHandler func(string, url.Values) (*Values, error)
+type ApiHandler func(string, url.Values) ([]byte, error)
 type ApiTracer func(http.Request, []byte, int, error)
-type ApiDecoder func([]byte) (interface{}, error)
 
 type headers map[string]string
 
 type Api struct {
-	decoder  ApiDecoder
 	client   *http.Client
 	base_url string
 	headers  headers
@@ -55,14 +53,8 @@ func (a *Api) Trace(tc ApiTracer) *Api {
 	return a
 }
 
-func (a *Api) SetDecoder(f ApiDecoder) *Api {
-	a.decoder = f
-
-	return a
-}
-
 // GET
-func (a *Api) Get(uri string, params url.Values) (v *Values, err error) {
+func (a *Api) Get(uri string, params url.Values) ([]byte, error) {
 
 	uri = resolveUri(uri)
 	req, err := http.NewRequest("GET", a.base_url+"/"+uri+"?"+params.Encode(), nil)
@@ -71,7 +63,7 @@ func (a *Api) Get(uri string, params url.Values) (v *Values, err error) {
 }
 
 // POST
-func (a *Api) Post(uri string, params url.Values) (v *Values, err error) {
+func (a *Api) Post(uri string, params url.Values) ([]byte, error) {
 
 	uri = resolveUri(uri)
 	req, err := http.NewRequest("POST", a.base_url+"/"+uri, bytes.NewBufferString(params.Encode()))
@@ -80,7 +72,7 @@ func (a *Api) Post(uri string, params url.Values) (v *Values, err error) {
 }
 
 // PUT
-func (a *Api) Put(uri string, params url.Values) (v *Values, err error) {
+func (a *Api) Put(uri string, params url.Values) ([]byte, error) {
 
 	uri = resolveUri(uri)
 	req, err := http.NewRequest("PUT", a.base_url+"/"+uri, bytes.NewBufferString(params.Encode()))
@@ -89,7 +81,7 @@ func (a *Api) Put(uri string, params url.Values) (v *Values, err error) {
 }
 
 // DELETE
-func (a *Api) Delete(uri string, params url.Values) (v *Values, err error) {
+func (a *Api) Delete(uri string, params url.Values) ([]byte, error) {
 
 	uri = resolveUri(uri)
 	req, err := http.NewRequest("DELETE", a.base_url+"/"+uri, bytes.NewBufferString(params.Encode()))
@@ -113,31 +105,14 @@ func resolveTracers(tcs []ApiTracer, req http.Request, ctn []byte, sc int, err e
 	}
 }
 
-func resolveDecoder(d ApiDecoder, b []byte) (v *Values, err error) {
-
-	if d == nil {
-		v = &Values{string(b)}
-		return
-	}
-
-	ret, err := d(b)
-	if err != nil {
-		return
-	}
-	v = &Values{ret}
-
-	return
-}
-
-func resolveRequest(a *Api, req *http.Request, e error) (v *Values, err error) {
+func resolveRequest(a *Api, req *http.Request, e error) (ctn []byte, err error) {
 	var (
 		tracers []ApiTracer  = a.tracers
 		request http.Request = *req
-		content []byte
 		status  int
 	)
 	defer func() {
-		resolveTracers(tracers, request, content, status, err)
+		resolveTracers(tracers, request, ctn, status, err)
 	}()
 
 	if e != nil {
@@ -153,12 +128,14 @@ func resolveRequest(a *Api, req *http.Request, e error) (v *Values, err error) {
 		return
 	}
 	defer res.Body.Close()
+	status = res.StatusCode
 
-	content, err = ioutil.ReadAll(res.Body)
+	ctn, err = ioutil.ReadAll(res.Body)
 
 	if err != nil {
 		err = fmt.Errorf("response body read error( %s )", err)
 		return
 	}
-	return resolveDecoder(a.decoder, content)
+
+	return
 }

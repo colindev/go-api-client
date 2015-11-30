@@ -13,10 +13,8 @@ api.SetHeader("Host", "api.host")
 // Get
 params, err := url.ParseQuery("a=1&b=2")
 
-// vals = *api.Values
-accVals, err := api.Get("hello", params)
-
-fmt.Println(vals.Get("key.key2.key3"))
+// data []byte
+data, err := api.Get("hello", params)
 
 ```
 
