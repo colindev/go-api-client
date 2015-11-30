@@ -23,8 +23,27 @@ func content(v interface{}) {
 	fmt.Printf("\033[35m%v\n\033[m", v)
 }
 
+type cliHeaders map[string]string
+
+func (ch *cliHeaders) String() string {
+	return fmt.Sprintf("%s", *ch)
+}
+
+func (ch *cliHeaders) Set(v string) (e error) {
+	arr := strings.SplitN(v, ":", 2)
+	if 2 != len(arr) {
+		e = fmt.Errorf("header mush be \"key:value\"")
+		return
+	}
+
+	(*ch)[strings.Trim(arr[0], " ")] = strings.Trim(arr[1], " ")
+	return
+}
+
 func main() {
 
+	var headers cliHeaders = map[string]string{}
+	flag.Var(&headers, "H", "headers list")
 	flag.Parse()
 
 	method := flag.Arg(0)
@@ -40,6 +59,8 @@ func main() {
 		content(req.Method)
 		title("Request Proto")
 		content(req.Proto)
+		title("Request Header")
+		content(req.Header)
 		title("url.URL String")
 		content(req.URL)
 		title("tracer status")
@@ -53,6 +74,10 @@ func main() {
 	}).Trace(func(http.Request, []byte, int, error) {
 		title("after panic")
 	})
+
+	for k, v := range headers {
+		client.SetHeader(k, v)
+	}
 
 	methods := map[string]api.ApiHandler{
 		"GET":    client.Get,

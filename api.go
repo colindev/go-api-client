@@ -34,6 +34,9 @@ func New(base string) *Api {
 
 // 設定共用檔頭
 func (a *Api) SetHeader(name, value string) *Api {
+
+	name = strings.Title(name)
+
 	a.headers[name] = value
 
 	return a
@@ -96,6 +99,10 @@ func resolveUri(s string) string {
 func resolveHeaders(req *http.Request, headers headers) {
 	for name, value := range headers {
 		req.Header.Set(name, value)
+	}
+
+	if host, ok := headers["Host"]; ok {
+		req.Host = host
 	}
 }
 
