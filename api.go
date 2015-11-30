@@ -43,7 +43,14 @@ func (a *Api) SetHeader(name, value string) *Api {
 
 // 注入追蹤程序
 func (a *Api) Trace(tc ApiTracer) *Api {
-	a.tracers = append(a.tracers, tc)
+	a.tracers = append(a.tracers, func(r http.Request, b []byte, i int, e error) {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Println(r)
+			}
+		}()
+		tc(r, b, i, e)
+	})
 
 	return a
 }
@@ -101,11 +108,6 @@ func resolveHeaders(req *http.Request, headers headers) {
 }
 
 func resolveTracers(tcs []ApiTracer, req http.Request, ctn []byte, sc int, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println(r)
-		}
-	}()
 	for _, tc := range tcs {
 		tc(req, ctn, sc, err)
 	}

@@ -50,6 +50,8 @@ func main() {
 		fmt.Println(err)
 	}).Trace(func(http.Request, []byte, int, error) {
 		panic("Test panic")
+	}).Trace(func(http.Request, []byte, int, error) {
+		title("after panic")
 	})
 
 	methods := map[string]api.ApiHandler{
