@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"rde-tech.go/rde-tech/go-api-client.git"
+	"github.com/colin1124x/go-api-client"
 )
 
 func usage() {
