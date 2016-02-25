@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -60,7 +61,13 @@ func (a *Api) Trace(tc ApiTracer) *Api {
 func (a *Api) Get(uri string, params url.Values) ([]byte, error) {
 
 	uri = resolveUri(uri)
-	req, err := http.NewRequest("GET", a.base_url+"/"+uri+"?"+params.Encode(), nil)
+	var url string
+	if params == nil {
+		url = a.base_url + "/" + uri
+	} else {
+		url = a.base_url + "/" + uri + "?" + params.Encode()
+	}
+	req, err := http.NewRequest("GET", url, nil)
 
 	return resolveRequest(a, req, err)
 }
@@ -69,7 +76,12 @@ func (a *Api) Get(uri string, params url.Values) ([]byte, error) {
 func (a *Api) Post(uri string, params url.Values) ([]byte, error) {
 
 	uri = resolveUri(uri)
-	req, err := http.NewRequest("POST", a.base_url+"/"+uri, bytes.NewBufferString(params.Encode()))
+
+	var payload io.Reader
+	if params != nil {
+		payload = bytes.NewBufferString(params.Encode())
+	}
+	req, err := http.NewRequest("POST", a.base_url+"/"+uri, payload)
 
 	return resolveRequest(a, req, err)
 }
@@ -78,7 +90,12 @@ func (a *Api) Post(uri string, params url.Values) ([]byte, error) {
 func (a *Api) Put(uri string, params url.Values) ([]byte, error) {
 
 	uri = resolveUri(uri)
-	req, err := http.NewRequest("PUT", a.base_url+"/"+uri, bytes.NewBufferString(params.Encode()))
+
+	var payload io.Reader
+	if params != nil {
+		payload = bytes.NewBufferString(params.Encode())
+	}
+	req, err := http.NewRequest("PUT", a.base_url+"/"+uri, payload)
 
 	return resolveRequest(a, req, err)
 }
@@ -87,7 +104,12 @@ func (a *Api) Put(uri string, params url.Values) ([]byte, error) {
 func (a *Api) Delete(uri string, params url.Values) ([]byte, error) {
 
 	uri = resolveUri(uri)
-	req, err := http.NewRequest("DELETE", a.base_url+"/"+uri, bytes.NewBufferString(params.Encode()))
+
+	var payload io.Reader
+	if params != nil {
+		payload = bytes.NewBufferString(params.Encode())
+	}
+	req, err := http.NewRequest("DELETE", a.base_url+"/"+uri, payload)
 
 	return resolveRequest(a, req, err)
 }
