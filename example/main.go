@@ -54,7 +54,7 @@ func main() {
 		usage()
 	}
 
-	client := api.New(base).Trace(func(req http.Request, b []byte, status int, err error) {
+	client := api.New(base).Trace(func(req *http.Request, b []byte, status int, err error) {
 		title("Request Method")
 		content(req.Method)
 		title("Request Proto")
@@ -69,9 +69,9 @@ func main() {
 		content(string(b))
 		title("tracer error")
 		fmt.Println(err)
-	}).Trace(func(http.Request, []byte, int, error) {
+	}).Trace(func(*http.Request, []byte, int, error) {
 		panic("Test panic")
-	}).Trace(func(http.Request, []byte, int, error) {
+	}).Trace(func(*http.Request, []byte, int, error) {
 		title("after panic")
 	})
 

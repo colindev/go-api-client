@@ -10,7 +10,7 @@ import (
 )
 
 type ApiHandler func(string, url.Values) ([]byte, error)
-type ApiTracer func(http.Request, []byte, int, error)
+type ApiTracer func(*http.Request, []byte, int, error)
 
 type headers map[string]string
 
@@ -44,7 +44,7 @@ func (a *Api) SetHeader(name, value string) *Api {
 
 // 注入追蹤程序
 func (a *Api) Trace(tc ApiTracer) *Api {
-	a.tracers = append(a.tracers, func(r http.Request, b []byte, i int, e error) {
+	a.tracers = append(a.tracers, func(r *http.Request, b []byte, i int, e error) {
 		defer func() {
 			if r := recover(); r != nil {
 				fmt.Println(r)
@@ -106,7 +106,7 @@ func resolveHeaders(req *http.Request, headers headers) {
 	}
 }
 
-func resolveTracers(tcs []ApiTracer, req http.Request, ctn []byte, sc int, err error) {
+func resolveTracers(tcs []ApiTracer, req *http.Request, ctn []byte, sc int, err error) {
 	for _, tc := range tcs {
 		tc(req, ctn, sc, err)
 	}
@@ -114,8 +114,8 @@ func resolveTracers(tcs []ApiTracer, req http.Request, ctn []byte, sc int, err e
 
 func resolveRequest(a *Api, req *http.Request, e error) (ctn []byte, err error) {
 	var (
-		tracers []ApiTracer  = a.tracers
-		request http.Request = *req
+		tracers []ApiTracer   = a.tracers
+		request *http.Request = req
 		status  int
 	)
 	defer func() {
