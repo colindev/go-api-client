@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -92,4 +93,32 @@ func TestResponse(t *testing.T) {
 	ln.Close()
 	<-closed
 	fmt.Println("server closed")
+}
+
+func TestTracer(t *testing.T) {
+	client := New("http://127.0.0.1")
+	client.Trace(func(req *http.Request, ctn []byte, sc int, err error) {
+		if req.URL.Path != "/x" {
+			t.Error("url must be '/x', but:", req.URL.Path)
+		}
+
+		if string(ctn) != "x" {
+			t.Errorf("content must be 'x', but: %s", ctn)
+		}
+
+		if sc != 200 {
+			t.Error("status code must be 200, but:", sc)
+		}
+
+		if err == nil || err.Error() != "x" {
+			t.Errorf("error must be error('x'), but %v", err)
+		}
+	})
+
+	req, err := http.NewRequest("get", "http://127.0.0.1/x", nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	client.FireTracers(req, []byte("x"), 200, errors.New("x"))
 }

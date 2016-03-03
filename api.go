@@ -114,6 +114,10 @@ func (a *Api) Delete(uri string, params url.Values) ([]byte, error) {
 	return resolveRequest(a, req, err)
 }
 
+func (a *Api) FireTracers(req *http.Request, ctn []byte, sc int, err error) {
+	resolveTracers(a.tracers, req, ctn, sc, err)
+}
+
 func resolveUri(s string) string {
 	return strings.TrimLeft(s, "/")
 }
