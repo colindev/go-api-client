@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -33,7 +34,18 @@ func init() {
 		if err != nil {
 			content.FormData = err.Error()
 		} else {
-			content.FormData = r.Form.Encode()
+			switch r.Method {
+			// https://golang.org/src/net/http/request.go?s=28722:28757#L924
+			// NOTE: ACC DELETE Method 需要將 payload 放置 body, 但是 golang http.Request.ParseForm 僅處理 PUT/POST/PATCH 內的 body
+			case "DELETE":
+				if b, e := ioutil.ReadAll(r.Body); e == nil {
+					content.FormData = string(b)
+				} else {
+					content.FormData = e.Error()
+				}
+			default:
+				content.FormData = r.Form.Encode()
+			}
 		}
 
 		if b, err := json.Marshal(content); err == nil {
@@ -186,9 +198,7 @@ func TestDelete(t *testing.T) {
 		t.Errorf("path expect %s, but %s", path, ctn.Path)
 	}
 
-	// https://golang.org/src/net/http/request.go?s=28722:28757#L924
-	// BUG ACC DELETE Method 需要將 payload 放置 body, 但是 golang http.Request.ParseForm 僅處理 PUT/POST/PATCH 內的 body
-	//if formData := params.Encode(); formData != ctn.FormData {
-	//	t.Errorf("form data encode expect %s, but %s", formData, ctn.FormData)
-	//}
+	if formData := params.Encode(); formData != ctn.FormData {
+		t.Errorf("form data encode expect %s, but %s", formData, ctn.FormData)
+	}
 }
