@@ -1,9 +1,7 @@
 package api
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -60,14 +58,11 @@ func (a *Api) Trace(tc ApiTracer) *Api {
 // GET
 func (a *Api) Get(uri string, params url.Values) ([]byte, error) {
 
-	uri = resolveUri(uri)
-	var url string
-	if params == nil {
-		url = a.base_url + "/" + uri
-	} else {
-		url = a.base_url + "/" + uri + "?" + params.Encode()
+	resource := resolveUrl(a.base_url, uri)
+	if params != nil {
+		resource += "?" + params.Encode()
 	}
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", resource, nil)
 
 	return resolveRequest(a, req, err)
 }
@@ -75,15 +70,9 @@ func (a *Api) Get(uri string, params url.Values) ([]byte, error) {
 // POST
 func (a *Api) Post(uri string, params url.Values) ([]byte, error) {
 
-	uri = resolveUri(uri)
+	resource := resolveUrl(a.base_url, uri)
 
-	var payload io.Reader
-	if params != nil {
-		payload = bytes.NewBufferString(params.Encode())
-	}
-	req, err := http.NewRequest("POST", a.base_url+"/"+uri, payload)
-	// TODO 重構
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+	req, err := http.NewRequest("POST", resource, strings.NewReader(params.Encode()))
 
 	return resolveRequest(a, req, err)
 }
@@ -91,15 +80,9 @@ func (a *Api) Post(uri string, params url.Values) ([]byte, error) {
 // PUT
 func (a *Api) Put(uri string, params url.Values) ([]byte, error) {
 
-	uri = resolveUri(uri)
+	resource := resolveUrl(a.base_url, uri)
 
-	var payload io.Reader
-	if params != nil {
-		payload = bytes.NewBufferString(params.Encode())
-	}
-	req, err := http.NewRequest("PUT", a.base_url+"/"+uri, payload)
-	// TODO 重構
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+	req, err := http.NewRequest("PUT", resource, strings.NewReader(params.Encode()))
 
 	return resolveRequest(a, req, err)
 }
@@ -107,21 +90,18 @@ func (a *Api) Put(uri string, params url.Values) ([]byte, error) {
 // DELETE
 func (a *Api) Delete(uri string, params url.Values) ([]byte, error) {
 
-	uri = resolveUri(uri)
+	resource := resolveUrl(a.base_url, uri)
 
-	var payload io.Reader
-	if params != nil {
-		payload = bytes.NewBufferString(params.Encode())
-	}
-	req, err := http.NewRequest("DELETE", a.base_url+"/"+uri, payload)
-	// TODO 重構
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+	req, err := http.NewRequest("DELETE", resource, strings.NewReader(params.Encode()))
 
 	return resolveRequest(a, req, err)
 }
 
-func resolveUri(s string) string {
-	return strings.TrimLeft(s, "/")
+func resolveUrl(base, s string) string {
+
+	base = strings.SplitN(base, "?", 2)[0]
+
+	return strings.TrimRight(base, "/") + "/" + strings.TrimLeft(s, "/")
 }
 
 func resolveHeaders(req *http.Request, headers headers) {
@@ -156,6 +136,11 @@ func resolveRequest(a *Api, req *http.Request, e error) (ctn []byte, err error) 
 	}
 
 	resolveHeaders(req, a.headers)
+
+	switch req.Method {
+	case "PUT", "POST", "DELETE":
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+	}
 
 	res, err := a.client.Do(req)
 	if err != nil {

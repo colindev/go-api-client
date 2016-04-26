@@ -1,95 +1,194 @@
 package api
 
 import (
-	"fmt"
-	"net"
+	"encoding/json"
 	"net/http"
 	"net/url"
-	"strconv"
+	"strings"
 	"testing"
+	"time"
+
+	"github.com/gorilla/mux"
 )
 
-type echo struct {
-	ln net.Listener
+type Content struct {
+	Method        string `json:"method"`
+	Path          string `json:"path"`
+	ContentType   string `json:"content-type"`
+	ContentLength int64  `json:"content-length"`
+	FormData      string `json:"form-data"`
 }
 
-func (s *echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
-	var res string
-	switch r.URL.Path {
-	case "/sum":
-		a, err := strconv.Atoi(q.Get("a"))
+func init() {
+
+	router := mux.NewRouter()
+	router.HandleFunc("/{path:.+}", func(w http.ResponseWriter, r *http.Request) {
+		var content Content
+		content.Method = r.Method
+		content.Path = strings.TrimLeft(r.URL.Path, "/")
+		content.ContentLength = r.ContentLength
+		content.ContentType = r.Header.Get("Content-Type")
+
+		err := r.ParseForm()
 		if err != nil {
-			res = err.Error()
-			break
-		}
-		b, err := strconv.Atoi(q.Get("b"))
-		if err != nil {
-			res = err.Error()
-			break
+			content.FormData = err.Error()
+		} else {
+			content.FormData = r.Form.Encode()
 		}
 
-		res = strconv.Itoa(a + b)
-	default:
-		res = r.URL.Path
-	}
+		if b, err := json.Marshal(content); err == nil {
+			w.Write(b)
+		} else {
+			w.Write([]byte(err.Error()))
+		}
+	})
 
-	w.Write([]byte(res))
+	go http.ListenAndServe(":8000", router)
+	time.Sleep(time.Nanosecond * 5000)
 }
 
-func startEcheServer(t *testing.T, addr string) (ln net.Listener, closed chan bool, err error) {
-	ln, err = net.Listen("tcp", addr)
-	if err != nil {
-		return
-	}
+func TestGet(t *testing.T) {
 
-	closed = make(chan bool)
-	go func() {
-		http.Serve(ln, &echo{ln})
-		close(closed)
-	}()
-	return ln, closed, err
-}
+	client := New("http://127.0.0.1:8000")
 
-var (
-	port string = "8000"
-)
-
-func TestResponse(t *testing.T) {
-	ln, closed, err := startEcheServer(t, ":"+port)
+	method := "GET"
+	path := "ok"
+	params := url.Values{}
+	params.Set("a", "1")
+	params.Set("b", "2")
+	params.Set("c[0][x]", "3")
+	data, err := client.Get(path, params)
 	if err != nil {
 		t.Error(err)
-		t.Fail()
+		t.Skip("test content")
 	}
 
-	fmt.Println("server start")
+	t.Logf("get: %s\n", data)
 
-	client := New("http://127.0.0.1:" + port)
-
-	var (
-		data []byte
-		e    error
-	)
-
-	data, e = client.Get("ok", nil)
-	if e != nil {
-		t.Error(e)
-	} else if string(data) != "/ok" {
-		t.Errorf("expect: /ok but %s", data)
-	}
-	params, e := url.ParseQuery("a=1&b=2")
-	if e != nil {
-		t.Error(e)
-		return
-	}
-	data, e = client.Get("sum", params)
-	if e != nil {
-		t.Error(e)
-	} else if string(data) != "3" {
-		t.Errorf("expect: 3 but %s", data)
+	var ctn Content
+	if err := json.Unmarshal(data, &ctn); err != nil {
+		t.Error(err)
 	}
 
-	ln.Close()
-	<-closed
-	fmt.Println("server closed")
+	if ctn.Method != method {
+		t.Errorf("method expect %s, but %s", method, ctn.Method)
+	}
+
+	if ctn.Path != path {
+		t.Errorf("path expect %s, but %s", path, ctn.Path)
+	}
+
+	if formData := params.Encode(); formData != ctn.FormData {
+		t.Errorf("form data encode expect %s, but %s", formData, ctn.FormData)
+	}
+}
+
+func TestPut(t *testing.T) {
+
+	client := New("http://127.0.0.1:8000")
+
+	method := "PUT"
+	path := "ok"
+	params := url.Values{}
+	params.Set("a", "1")
+	params.Set("b", "2")
+	params.Set("c[0][x]", "3")
+	data, err := client.Put(path, params)
+	if err != nil {
+		t.Error(err)
+		t.Skip("test content")
+	}
+
+	t.Logf("get: %s\n", data)
+
+	var ctn Content
+	if err := json.Unmarshal(data, &ctn); err != nil {
+		t.Error(err)
+	}
+
+	if ctn.Method != method {
+		t.Errorf("method expect %s, but %s", method, ctn.Method)
+	}
+
+	if ctn.Path != path {
+		t.Errorf("path expect %s, but %s", path, ctn.Path)
+	}
+
+	if formData := params.Encode(); formData != ctn.FormData {
+		t.Errorf("form data encode expect %s, but %s", formData, ctn.FormData)
+	}
+}
+
+func TestPost(t *testing.T) {
+
+	client := New("http://127.0.0.1:8000")
+
+	method := "POST"
+	path := "ok"
+	params := url.Values{}
+	params.Set("a", "1")
+	params.Set("b", "2")
+	params.Set("c[0][x]", "3")
+	data, err := client.Post(path, params)
+	if err != nil {
+		t.Error(err)
+		t.Skip("test content")
+	}
+
+	t.Logf("get: %s\n", data)
+
+	var ctn Content
+	if err := json.Unmarshal(data, &ctn); err != nil {
+		t.Error(err)
+	}
+
+	if ctn.Method != method {
+		t.Errorf("method expect %s, but %s", method, ctn.Method)
+	}
+
+	if ctn.Path != path {
+		t.Errorf("path expect %s, but %s", path, ctn.Path)
+	}
+
+	if formData := params.Encode(); formData != ctn.FormData {
+		t.Errorf("form data encode expect %s, but %s", formData, ctn.FormData)
+	}
+}
+
+func TestDelete(t *testing.T) {
+
+	client := New("http://127.0.0.1:8000")
+
+	method := "DELETE"
+	path := "ok"
+	params := url.Values{}
+	params.Set("a", "1")
+	params.Set("b", "2")
+	params.Set("c[0][x]", "3")
+	data, err := client.Delete(path, params)
+	if err != nil {
+		t.Error(err)
+		t.Skip("test content")
+	}
+
+	t.Logf("get: %s\n", data)
+
+	var ctn Content
+	if err := json.Unmarshal(data, &ctn); err != nil {
+		t.Error(err)
+	}
+
+	if ctn.Method != method {
+		t.Errorf("method expect %s, but %s", method, ctn.Method)
+	}
+
+	if ctn.Path != path {
+		t.Errorf("path expect %s, but %s", path, ctn.Path)
+	}
+
+	// https://golang.org/src/net/http/request.go?s=28722:28757#L924
+	// BUG ACC DELETE Method 需要將 payload 放置 body, 但是 golang http.Request.ParseForm 僅處理 PUT/POST/PATCH 內的 body
+	//if formData := params.Encode(); formData != ctn.FormData {
+	//	t.Errorf("form data encode expect %s, but %s", formData, ctn.FormData)
+	//}
 }
