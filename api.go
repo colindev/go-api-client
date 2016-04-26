@@ -82,6 +82,8 @@ func (a *Api) Post(uri string, params url.Values) ([]byte, error) {
 		payload = bytes.NewBufferString(params.Encode())
 	}
 	req, err := http.NewRequest("POST", a.base_url+"/"+uri, payload)
+	// TODO 重構
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
 
 	return resolveRequest(a, req, err)
 }
@@ -96,6 +98,8 @@ func (a *Api) Put(uri string, params url.Values) ([]byte, error) {
 		payload = bytes.NewBufferString(params.Encode())
 	}
 	req, err := http.NewRequest("PUT", a.base_url+"/"+uri, payload)
+	// TODO 重構
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
 
 	return resolveRequest(a, req, err)
 }
@@ -110,6 +114,8 @@ func (a *Api) Delete(uri string, params url.Values) ([]byte, error) {
 		payload = bytes.NewBufferString(params.Encode())
 	}
 	req, err := http.NewRequest("DELETE", a.base_url+"/"+uri, payload)
+	// TODO 重構
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
 
 	return resolveRequest(a, req, err)
 }
