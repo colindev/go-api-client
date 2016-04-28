@@ -148,13 +148,17 @@ func resolveRequest(a *Api, req *http.Request, e error) (ctn []byte, err error) 
 		return
 	}
 	defer res.Body.Close()
-	status = res.StatusCode
 
 	ctn, err = ioutil.ReadAll(res.Body)
 
 	if err != nil {
 		err = fmt.Errorf("response body read error( %s )", err)
 		return
+	}
+
+	status = res.StatusCode
+	if status != http.StatusOK {
+		err = fmt.Errorf("http error [%d]", status)
 	}
 
 	return

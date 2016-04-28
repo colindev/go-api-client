@@ -2,9 +2,11 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -23,6 +25,18 @@ type Content struct {
 func init() {
 
 	router := mux.NewRouter()
+
+	router.HandleFunc("/error/{code}", func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		code, err := strconv.Atoi(vars["code"])
+		if err != nil {
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		http.Error(w, "test error code", code)
+	}).Methods("GET")
+
 	router.HandleFunc("/{path:.+}", func(w http.ResponseWriter, r *http.Request) {
 		var content Content
 		content.Method = r.Method
@@ -201,4 +215,16 @@ func TestDelete(t *testing.T) {
 	if formData := params.Encode(); formData != ctn.FormData {
 		t.Errorf("form data encode expect %s, but %s", formData, ctn.FormData)
 	}
+}
+
+func ExampleHttpError() {
+
+	client := New("http://127.0.0.1:8000")
+
+	ctn, err := client.Get("error/404", nil)
+	fmt.Println(err)
+	fmt.Println(string(ctn))
+	// Output:
+	// http error [404]
+	// test error code
 }
