@@ -6,12 +6,10 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/gorilla/mux"
+	"github.com/colindev/go-api-client/test"
 )
 
 type Content struct {
@@ -22,60 +20,45 @@ type Content struct {
 	FormData      string `json:"form-data"`
 }
 
+var client = New("http://127.0.0.1:8000")
+
 func init() {
-
-	router := mux.NewRouter()
-
-	router.HandleFunc("/error/{code}", func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		code, err := strconv.Atoi(vars["code"])
-		if err != nil {
-			w.Write([]byte(err.Error()))
-			return
+	client.Resolver = test.New().Callback(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		ctn := Content{
+			Method:        r.Method,
+			Path:          strings.TrimLeft(r.URL.Path, "/"),
+			ContentType:   r.Header.Get("Content-Type"),
+			ContentLength: r.ContentLength,
 		}
-
-		http.Error(w, "test error code", code)
-	}).Methods("GET")
-
-	router.HandleFunc("/{path:.+}", func(w http.ResponseWriter, r *http.Request) {
-		var content Content
-		content.Method = r.Method
-		content.Path = strings.TrimLeft(r.URL.Path, "/")
-		content.ContentLength = r.ContentLength
-		content.ContentType = r.Header.Get("Content-Type")
 
 		err := r.ParseForm()
 		if err != nil {
-			content.FormData = err.Error()
+			ctn.FormData = err.Error()
 		} else {
 			switch r.Method {
 			// https://golang.org/src/net/http/request.go?s=28722:28757#L924
 			// NOTE: ACC DELETE Method 需要將 payload 放置 body, 但是 golang http.Request.ParseForm 僅處理 PUT/POST/PATCH 內的 body
 			case "DELETE":
 				if b, e := ioutil.ReadAll(r.Body); e == nil {
-					content.FormData = string(b)
+					ctn.FormData = string(b)
 				} else {
-					content.FormData = e.Error()
+					ctn.FormData = e.Error()
 				}
 			default:
-				content.FormData = r.Form.Encode()
+				ctn.FormData = r.Form.Encode()
 			}
 		}
 
-		if b, err := json.Marshal(content); err == nil {
+		if b, err := json.Marshal(ctn); err == nil {
 			w.Write(b)
 		} else {
 			w.Write([]byte(err.Error()))
 		}
 	})
-
-	go http.ListenAndServe(":8000", router)
-	time.Sleep(time.Nanosecond * 5000)
 }
 
 func TestGet(t *testing.T) {
-
-	client := New("http://127.0.0.1:8000")
 
 	method := "GET"
 	path := "ok"
@@ -111,8 +94,6 @@ func TestGet(t *testing.T) {
 
 func TestPut(t *testing.T) {
 
-	client := New("http://127.0.0.1:8000")
-
 	method := "PUT"
 	path := "ok"
 	params := url.Values{}
@@ -146,8 +127,6 @@ func TestPut(t *testing.T) {
 }
 
 func TestPost(t *testing.T) {
-
-	client := New("http://127.0.0.1:8000")
 
 	method := "POST"
 	path := "ok"
@@ -183,8 +162,6 @@ func TestPost(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 
-	client := New("http://127.0.0.1:8000")
-
 	method := "DELETE"
 	path := "ok"
 	params := url.Values{}
@@ -219,9 +196,12 @@ func TestDelete(t *testing.T) {
 
 func ExampleHttpError() {
 
-	client := New("http://127.0.0.1:8000")
+	c := New("http://127.0.0.1:8000")
+	c.Resolver = test.New().Callback(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "test error code", 404)
+	})
 
-	ctn, err := client.Get("error/404", nil)
+	ctn, err := c.Get("error/404", nil)
 	fmt.Println(err)
 	fmt.Println(string(ctn))
 	// Output:
