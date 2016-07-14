@@ -10,11 +10,14 @@ import (
 
 type ApiHandler func(string, url.Values) ([]byte, error)
 type ApiTracer func(*http.Request, []byte, int, error)
+type Resolver interface {
+	Do(*http.Request) (*http.Response, error)
+}
 
 type headers map[string]string
 
 type Api struct {
-	client   *http.Client
+	Resolver
 	base_url string
 	headers  headers
 	tracers  []ApiTracer
@@ -25,7 +28,7 @@ func New(base string) *Api {
 	base = strings.TrimRight(base, "/")
 
 	return &Api{
-		client:   &http.Client{},
+		Resolver: &http.Client{},
 		base_url: base,
 		headers:  make(headers),
 	}
@@ -142,7 +145,7 @@ func resolveRequest(a *Api, req *http.Request, e error) (ctn []byte, err error) 
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
 	}
 
-	res, err := a.client.Do(req)
+	res, err := a.Resolver.Do(req)
 	if err != nil {
 		err = fmt.Errorf("request send error( %s )", err)
 		return
