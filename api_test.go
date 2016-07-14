@@ -20,10 +20,10 @@ type Content struct {
 	FormData      string `json:"form-data"`
 }
 
-var client = New("http://127.0.0.1:8000")
+var c = New("http://127.0.0.1:8000")
 
 func init() {
-	client.Resolver = test.New().Callback(func(w http.ResponseWriter, r *http.Request) {
+	c.Replace(test.New().Callback(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
 		ctn := Content{
 			Method:        r.Method,
@@ -55,7 +55,7 @@ func init() {
 		} else {
 			w.Write([]byte(err.Error()))
 		}
-	})
+	}))
 }
 
 func TestGet(t *testing.T) {
@@ -66,7 +66,7 @@ func TestGet(t *testing.T) {
 	params.Set("a", "1")
 	params.Set("b", "2")
 	params.Set("c[0][x]", "3")
-	data, err := client.Get(path, params)
+	data, err := c.Get(path, params)
 	if err != nil {
 		t.Error(err)
 		t.Skip("test content")
@@ -100,7 +100,7 @@ func TestPut(t *testing.T) {
 	params.Set("a", "1")
 	params.Set("b", "2")
 	params.Set("c[0][x]", "3")
-	data, err := client.Put(path, params)
+	data, err := c.Put(path, params)
 	if err != nil {
 		t.Error(err)
 		t.Skip("test content")
@@ -134,7 +134,7 @@ func TestPost(t *testing.T) {
 	params.Set("a", "1")
 	params.Set("b", "2")
 	params.Set("c[0][x]", "3")
-	data, err := client.Post(path, params)
+	data, err := c.Post(path, params)
 	if err != nil {
 		t.Error(err)
 		t.Skip("test content")
@@ -168,7 +168,7 @@ func TestDelete(t *testing.T) {
 	params.Set("a", "1")
 	params.Set("b", "2")
 	params.Set("c[0][x]", "3")
-	data, err := client.Delete(path, params)
+	data, err := c.Delete(path, params)
 	if err != nil {
 		t.Error(err)
 		t.Skip("test content")
@@ -197,9 +197,9 @@ func TestDelete(t *testing.T) {
 func ExampleHttpError() {
 
 	c := New("http://127.0.0.1:8000")
-	c.Resolver = test.New().Callback(func(w http.ResponseWriter, r *http.Request) {
+	c.Replace(test.New().Callback(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "test error code", 404)
-	})
+	}))
 
 	ctn, err := c.Get("error/404", nil)
 	fmt.Println(err)

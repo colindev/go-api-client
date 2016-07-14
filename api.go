@@ -9,44 +9,59 @@ import (
 )
 
 type ApiHandler func(string, url.Values) ([]byte, error)
-type ApiTracer func(*http.Request, []byte, int, error)
+type Tracer func(*http.Request, []byte, int, error)
 type Resolver interface {
 	Do(*http.Request) (*http.Response, error)
 }
 
 type headers map[string]string
 
-type Api struct {
+type Client interface {
+	Replace(Resolver) Client
+	SetHeader(name, value string) Client
+	Trace(Tracer) Client
+	Get(string, url.Values) ([]byte, error)
+	Post(string, url.Values) ([]byte, error)
+	Put(string, url.Values) ([]byte, error)
+	Delete(string, url.Values) ([]byte, error)
+}
+
+type client struct {
 	Resolver
 	base_url string
 	headers  headers
-	tracers  []ApiTracer
+	tracers  []Tracer
 }
 
-func New(base string) *Api {
+func New(base string) Client {
 
 	base = strings.TrimRight(base, "/")
 
-	return &Api{
+	return &client{
 		Resolver: &http.Client{},
 		base_url: base,
 		headers:  make(headers),
 	}
 }
 
+func (c *client) Replace(r Resolver) Client {
+	c.Resolver = r
+	return c
+}
+
 // 設定共用檔頭
-func (a *Api) SetHeader(name, value string) *Api {
+func (c *client) SetHeader(name, value string) Client {
 
 	name = strings.Title(name)
 
-	a.headers[name] = value
+	c.headers[name] = value
 
-	return a
+	return c
 }
 
 // 注入追蹤程序
-func (a *Api) Trace(tc ApiTracer) *Api {
-	a.tracers = append(a.tracers, func(r *http.Request, b []byte, i int, e error) {
+func (c *client) Trace(tc Tracer) Client {
+	c.tracers = append(c.tracers, func(r *http.Request, b []byte, i int, e error) {
 		defer func() {
 			if r := recover(); r != nil {
 				fmt.Println(r)
@@ -55,49 +70,49 @@ func (a *Api) Trace(tc ApiTracer) *Api {
 		tc(r, b, i, e)
 	})
 
-	return a
+	return c
 }
 
 // GET
-func (a *Api) Get(uri string, params url.Values) ([]byte, error) {
+func (c *client) Get(uri string, params url.Values) ([]byte, error) {
 
-	resource := resolveUrl(a.base_url, uri)
+	resource := resolveUrl(c.base_url, uri)
 	if params != nil {
 		resource += "?" + params.Encode()
 	}
 	req, err := http.NewRequest("GET", resource, nil)
 
-	return resolveRequest(a, req, err)
+	return resolveRequest(c, req, err)
 }
 
 // POST
-func (a *Api) Post(uri string, params url.Values) ([]byte, error) {
+func (c *client) Post(uri string, params url.Values) ([]byte, error) {
 
-	resource := resolveUrl(a.base_url, uri)
+	resource := resolveUrl(c.base_url, uri)
 
 	req, err := http.NewRequest("POST", resource, strings.NewReader(params.Encode()))
 
-	return resolveRequest(a, req, err)
+	return resolveRequest(c, req, err)
 }
 
 // PUT
-func (a *Api) Put(uri string, params url.Values) ([]byte, error) {
+func (c *client) Put(uri string, params url.Values) ([]byte, error) {
 
-	resource := resolveUrl(a.base_url, uri)
+	resource := resolveUrl(c.base_url, uri)
 
 	req, err := http.NewRequest("PUT", resource, strings.NewReader(params.Encode()))
 
-	return resolveRequest(a, req, err)
+	return resolveRequest(c, req, err)
 }
 
 // DELETE
-func (a *Api) Delete(uri string, params url.Values) ([]byte, error) {
+func (c *client) Delete(uri string, params url.Values) ([]byte, error) {
 
-	resource := resolveUrl(a.base_url, uri)
+	resource := resolveUrl(c.base_url, uri)
 
 	req, err := http.NewRequest("DELETE", resource, strings.NewReader(params.Encode()))
 
-	return resolveRequest(a, req, err)
+	return resolveRequest(c, req, err)
 }
 
 func resolveUrl(base, s string) string {
@@ -117,15 +132,15 @@ func resolveHeaders(req *http.Request, headers headers) {
 	}
 }
 
-func resolveTracers(tcs []ApiTracer, req *http.Request, ctn []byte, sc int, err error) {
+func resolveTracers(tcs []Tracer, req *http.Request, ctn []byte, sc int, err error) {
 	for _, tc := range tcs {
 		tc(req, ctn, sc, err)
 	}
 }
 
-func resolveRequest(a *Api, req *http.Request, e error) (ctn []byte, err error) {
+func resolveRequest(c *client, req *http.Request, e error) (ctn []byte, err error) {
 	var (
-		tracers []ApiTracer   = a.tracers
+		tracers []Tracer      = c.tracers
 		request *http.Request = req
 		status  int
 	)
@@ -138,14 +153,14 @@ func resolveRequest(a *Api, req *http.Request, e error) (ctn []byte, err error) 
 		return
 	}
 
-	resolveHeaders(req, a.headers)
+	resolveHeaders(req, c.headers)
 
 	switch req.Method {
 	case "PUT", "POST", "DELETE":
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
 	}
 
-	res, err := a.Resolver.Do(req)
+	res, err := c.Resolver.Do(req)
 	if err != nil {
 		err = fmt.Errorf("request send error( %s )", err)
 		return
