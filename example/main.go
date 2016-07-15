@@ -80,7 +80,7 @@ func main() {
 		client.SetHeader(k, v)
 	}
 
-	methods := map[string]func(string, url.Values) ([]byte, error){
+	methods := map[string]func(string, url.Values) ([]byte, int, error){
 		"GET":    client.Get,
 		"POST":   client.Post,
 		"PUT":    client.Put,

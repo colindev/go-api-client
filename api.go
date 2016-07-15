@@ -19,10 +19,10 @@ type Client interface {
 	Replace(Resolver) Client
 	SetHeader(name, value string) Client
 	Trace(Tracer) Client
-	Get(string, url.Values) ([]byte, error)
-	Post(string, url.Values) ([]byte, error)
-	Put(string, url.Values) ([]byte, error)
-	Delete(string, url.Values) ([]byte, error)
+	Get(string, url.Values) ([]byte, int, error)
+	Post(string, url.Values) ([]byte, int, error)
+	Put(string, url.Values) ([]byte, int, error)
+	Delete(string, url.Values) ([]byte, int, error)
 }
 
 type client struct {
@@ -73,7 +73,7 @@ func (c *client) Trace(tc Tracer) Client {
 }
 
 // GET
-func (c *client) Get(uri string, params url.Values) ([]byte, error) {
+func (c *client) Get(uri string, params url.Values) ([]byte, int, error) {
 
 	resource := resolveUrl(c.base_url, uri)
 	if params != nil {
@@ -85,7 +85,7 @@ func (c *client) Get(uri string, params url.Values) ([]byte, error) {
 }
 
 // POST
-func (c *client) Post(uri string, params url.Values) ([]byte, error) {
+func (c *client) Post(uri string, params url.Values) ([]byte, int, error) {
 
 	resource := resolveUrl(c.base_url, uri)
 
@@ -95,7 +95,7 @@ func (c *client) Post(uri string, params url.Values) ([]byte, error) {
 }
 
 // PUT
-func (c *client) Put(uri string, params url.Values) ([]byte, error) {
+func (c *client) Put(uri string, params url.Values) ([]byte, int, error) {
 
 	resource := resolveUrl(c.base_url, uri)
 
@@ -105,7 +105,7 @@ func (c *client) Put(uri string, params url.Values) ([]byte, error) {
 }
 
 // DELETE
-func (c *client) Delete(uri string, params url.Values) ([]byte, error) {
+func (c *client) Delete(uri string, params url.Values) ([]byte, int, error) {
 
 	resource := resolveUrl(c.base_url, uri)
 
@@ -137,11 +137,10 @@ func resolveTracers(tcs []Tracer, req *http.Request, ctn []byte, sc int, err err
 	}
 }
 
-func resolveRequest(c *client, req *http.Request, e error) (ctn []byte, err error) {
+func resolveRequest(c *client, req *http.Request, e error) (ctn []byte, status int, err error) {
 	var (
 		tracers []Tracer      = c.tracers
 		request *http.Request = req
-		status  int
 	)
 	defer func() {
 		resolveTracers(tracers, request, ctn, status, err)

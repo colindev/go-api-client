@@ -66,7 +66,7 @@ func TestGet(t *testing.T) {
 	params.Set("a", "1")
 	params.Set("b", "2")
 	params.Set("c[0][x]", "3")
-	data, err := c.Get(path, params)
+	data, _, err := c.Get(path, params)
 	if err != nil {
 		t.Error(err)
 		t.Skip("test content")
@@ -100,7 +100,7 @@ func TestPut(t *testing.T) {
 	params.Set("a", "1")
 	params.Set("b", "2")
 	params.Set("c[0][x]", "3")
-	data, err := c.Put(path, params)
+	data, _, err := c.Put(path, params)
 	if err != nil {
 		t.Error(err)
 		t.Skip("test content")
@@ -134,7 +134,7 @@ func TestPost(t *testing.T) {
 	params.Set("a", "1")
 	params.Set("b", "2")
 	params.Set("c[0][x]", "3")
-	data, err := c.Post(path, params)
+	data, _, err := c.Post(path, params)
 	if err != nil {
 		t.Error(err)
 		t.Skip("test content")
@@ -168,7 +168,7 @@ func TestDelete(t *testing.T) {
 	params.Set("a", "1")
 	params.Set("b", "2")
 	params.Set("c[0][x]", "3")
-	data, err := c.Delete(path, params)
+	data, _, err := c.Delete(path, params)
 	if err != nil {
 		t.Error(err)
 		t.Skip("test content")
@@ -201,10 +201,12 @@ func ExampleHttpError() {
 		http.Error(w, "test error code", 404)
 	}))
 
-	ctn, err := c.Get("error/404", nil)
+	ctn, status, err := c.Get("error/404", nil)
 	fmt.Println(err)
+	fmt.Println(status)
 	fmt.Println(string(ctn))
 	// Output:
 	// http error [404]
+	// 404
 	// test error code
 }
