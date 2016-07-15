@@ -4,10 +4,11 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 
-	"github.com/colin1124x/go-api-client"
+	"github.com/colindev/go-api-client"
 )
 
 func usage() {
@@ -79,7 +80,7 @@ func main() {
 		client.SetHeader(k, v)
 	}
 
-	methods := map[string]api.ApiHandler{
+	methods := map[string]func(string, url.Values) ([]byte, error){
 		"GET":    client.Get,
 		"POST":   client.Post,
 		"PUT":    client.Put,

@@ -8,7 +8,6 @@ import (
 	"strings"
 )
 
-type ApiHandler func(string, url.Values) ([]byte, error)
 type Tracer func(*http.Request, []byte, int, error)
 type Resolver interface {
 	Do(*http.Request) (*http.Response, error)
