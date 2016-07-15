@@ -8,7 +8,6 @@ import (
 
 func TestHandle(t *testing.T) {
 	c := New().Handle(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(200)
 		switch r.Method {
 		case "GET":
 			w.Write([]byte("a"))
@@ -49,7 +48,11 @@ func TestHandle(t *testing.T) {
 		}
 
 		if string(body) != b {
-			t.Errorf("expect %s, but %s", b, body)
+			t.Errorf("body: expect %s, but %s", b, body)
+		}
+
+		if res.StatusCode != 500 {
+			t.Errorf("status code: expect %d, but %d", 500, res.StatusCode)
 		}
 	}
 }
