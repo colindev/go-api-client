@@ -30,6 +30,9 @@ func (c *client) Do(req *http.Request) (*http.Response, error) {
 
 	res := newResponse()
 	c.handler(res, req)
+	if res.code < 0 {
+		res.code = 500
+	}
 
 	return http.ReadResponse(res.GetReader(), req)
 }
