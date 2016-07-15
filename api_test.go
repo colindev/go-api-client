@@ -23,7 +23,7 @@ type Content struct {
 var c = New("http://127.0.0.1:8000")
 
 func init() {
-	c.Replace(test.New().Callback(func(w http.ResponseWriter, r *http.Request) {
+	c.Replace(test.New().Handle(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
 		ctn := Content{
 			Method:        r.Method,
@@ -197,7 +197,7 @@ func TestDelete(t *testing.T) {
 func ExampleHttpError() {
 
 	c := New("http://127.0.0.1:8000")
-	c.Replace(test.New().Callback(func(w http.ResponseWriter, r *http.Request) {
+	c.Replace(test.New().Handle(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "test error code", 404)
 	}))
 

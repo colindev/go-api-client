@@ -9,27 +9,27 @@ import (
 
 type Client interface {
 	Do(*http.Request) (*http.Response, error)
-	Callback(func(http.ResponseWriter, *http.Request)) Client
+	Handle(func(http.ResponseWriter, *http.Request)) Client
 }
 
 type client struct {
-	callback func(http.ResponseWriter, *http.Request)
+	handler func(http.ResponseWriter, *http.Request)
 }
 
 func New() Client {
 	return &client{}
 }
 
-func (c *client) Callback(callback func(w http.ResponseWriter, r *http.Request)) Client {
+func (c *client) Handle(handler func(w http.ResponseWriter, r *http.Request)) Client {
 
-	c.callback = callback
+	c.handler = handler
 	return c
 }
 
 func (c *client) Do(req *http.Request) (*http.Response, error) {
 
 	res := newResponse()
-	c.callback(res, req)
+	c.handler(res, req)
 
 	return http.ReadResponse(res.GetReader(), req)
 }
