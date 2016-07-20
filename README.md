@@ -1,4 +1,5 @@
 # RESTful API Client (by golang)
+[![Build Status](https://travis-ci.org/colindev/go-api-client.svg?branch=master)](https://travis-ci.org/colindev/go-api-client)
 
 用 go 實作的 RESTful api client 工具
 
