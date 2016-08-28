@@ -2,6 +2,7 @@
 
 用 go 實作的 RESTful api client 工具
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/colindev/go-api-client)](https://goreportcard.com/report/github.com/colindev/go-api-client)
 [![Build Status](https://travis-ci.org/colindev/go-api-client.svg?branch=master)](https://travis-ci.org/colindev/go-api-client)
 [![GoDoc](https://godoc.org/github.com/colindev/go-api-client?status.svg)](https://godoc.org/github.com/colindev/go-api-client)
 
