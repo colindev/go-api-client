@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -10,11 +11,6 @@ import (
 
 	"github.com/colindev/go-api-client"
 )
-
-func usage() {
-	fmt.Printf("\033[31mUsage: %s %s\033[m\n", os.Args[0], "[GET|POST|PUT|DELETE] [URL] [SUB-URL]")
-	os.Exit(2)
-}
 
 func title(s string) {
 	fmt.Printf("\033[33m%s\n\033[m", s)
@@ -43,37 +39,45 @@ func (ch *cliHeaders) Set(v string) (e error) {
 
 func main() {
 
-	var headers cliHeaders = map[string]string{}
-	flag.Var(&headers, "H", "headers list")
-	flag.Parse()
+	var (
+		verbose bool
+		params  string
+		headers = cliHeaders{}
+	)
+	cli := flag.CommandLine
+	cli.Usage = func() {
+		fmt.Printf("\033[31mUsage: COMMANDS [GET|POST|PUT|DELETE] [BASE] [URI]\033[m\n")
+		cli.PrintDefaults()
+		os.Exit(2)
 
-	method := flag.Arg(0)
-	base := flag.Arg(1)
-	uri := flag.Arg(2)
-
-	if "" == method || "" == base {
-		usage()
 	}
+	cli.StringVar(&params, "params", "", "params")
+	cli.BoolVar(&verbose, "V", false, "verbose")
+	cli.Var(&headers, "H", "headers list")
+	cli.Parse(os.Args[1:])
 
+	args := cli.Args()
+	if len(args) != 3 {
+		cli.Usage()
+	}
+	method := args[0]
+	base := args[1]
+	uri := args[2]
+
+	fmt.Println("--- request start")
+	defer fmt.Println("--- request end")
 	client := api.New(base).Trace(func(req *http.Request, b []byte, status int, err error) {
-		title("Request Method")
-		content(req.Method)
-		title("Request Proto")
-		content(req.Proto)
-		title("Request Header")
-		content(req.Header)
-		title("url.URL String")
-		content(req.URL)
-		title("tracer status")
-		content(status)
-		title("tracer body")
-		content(string(b))
-		title("tracer error")
-		fmt.Println(err)
-	}).Trace(func(*http.Request, []byte, int, error) {
-		panic("Test panic")
-	}).Trace(func(*http.Request, []byte, int, error) {
-		title("after panic")
+		fmt.Printf("%s %d %s\n", req.Method, status, req.URL)
+		for k, v := range req.Header {
+			fmt.Printf("\033[2;33m%s:\033[m %v\n", k, v)
+		}
+
+		fmt.Println("\033[2;35m--- body start\033[m")
+		fmt.Println(string(b))
+		fmt.Println("\033[2;35m--- body end\033[m")
+		if err != nil {
+			fmt.Printf("\033[2;31m%v\033[m\n", err)
+		}
 	})
 
 	for k, v := range headers {
@@ -90,8 +94,12 @@ func main() {
 	getter, ok := methods[strings.ToUpper(method)]
 
 	if !ok {
-		usage()
+		cli.Usage()
 	}
 
-	getter(uri, nil)
+	query, err := url.ParseQuery(params)
+	if err != nil {
+		log.Printf("\033[2;31m%v\033[m\n", err)
+	}
+	getter(uri, query)
 }
